@@ -1,0 +1,11 @@
+{
+  "name": "Oxivera — Air Filter Monitor",
+  "short_name": "Oxivera",
+  "description": "Sistem monitoring kualitas udara sebelum dan sesudah filter.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#ff94c0",
+  "icons": []
+}
