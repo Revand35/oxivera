@@ -14,9 +14,7 @@ import { rtdb } from "@/lib/firebase";
 import {
   effectivenessPercent,
   aqiCategory,
-  mockDevices,
   SensorReading,
-  Device,
 } from "@/lib/mockData";
 
 export interface HistoricalPoint {
@@ -28,6 +26,12 @@ export interface HistoricalPoint {
   afterAqi: number;
   beforeCo2: number;
   afterCo2: number;
+  beforeVoc: number;
+  afterVoc: number;
+  beforeTemp: number;
+  afterTemp: number;
+  beforeHumidity: number;
+  afterHumidity: number;
 }
 
 export interface Effectiveness {
@@ -49,8 +53,6 @@ interface SensorDataContextType {
   after: SensorReading;
   effectiveness: Effectiveness;
   lastUpdate: Date;
-  devices: Device[];
-  onlineDevices: number;
   history: HistoricalPoint[];
   raw: RawSensor | null;
   connected: boolean;
@@ -127,16 +129,20 @@ function makeBefore(after: SensorReading): SensorReading {
   };
 }
 
-const HISTORY_CAP = 24 * 30;
-const HISTORY_INTERVAL_MS = 60 * 1000;
+// Live-feel settings: push 1 point every 3 seconds so the chart visibly
+// moves while the user is watching. Cap = 1 hour of live data.
+const HISTORY_CAP = 1200;
+const HISTORY_INTERVAL_MS = 3000;
 
 export function SensorDataProvider({ children }: { children: ReactNode }) {
   const [raw, setRaw] = useState<RawSensor | null>(null);
   const [connected, setConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [history, setHistory] = useState<HistoricalPoint[]>([]);
-  const [devices] = useState<Device[]>(mockDevices);
-  const lastAppendRef = useRef<number>(0);
+  const rawRef = useRef<RawSensor | null>(null);
+  useEffect(() => {
+    rawRef.current = raw;
+  }, [raw]);
 
   useEffect(() => {
     const sensorRef = ref(rtdb, "sensor");
@@ -163,29 +169,40 @@ export function SensorDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!raw) return;
-    const now = Date.now();
-    if (history.length > 0 && now - lastAppendRef.current < HISTORY_INTERVAL_MS) return;
-    lastAppendRef.current = now;
-
-    const after = makeAfter(raw);
-    const before = makeBefore(after);
-    const d = new Date(now);
-    const point: HistoricalPoint = {
-      time: d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
-      hour: d.getHours(),
-      beforePm25: before.pm25,
-      afterPm25: after.pm25,
-      beforeAqi: before.aqi,
-      afterAqi: after.aqi,
-      beforeCo2: before.co2,
-      afterCo2: after.co2,
+    const appendPoint = () => {
+      const r = rawRef.current;
+      if (!r) return;
+      const after = makeAfter(r);
+      const before = makeBefore(after);
+      const d = new Date();
+      const point: HistoricalPoint = {
+        time: d.toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        }),
+        hour: d.getHours(),
+        beforePm25: before.pm25,
+        afterPm25: after.pm25,
+        beforeAqi: before.aqi,
+        afterAqi: after.aqi,
+        beforeCo2: before.co2,
+        afterCo2: after.co2,
+        beforeVoc: before.voc,
+        afterVoc: after.voc,
+        beforeTemp: before.temperature,
+        afterTemp: after.temperature,
+        beforeHumidity: before.humidity,
+        afterHumidity: after.humidity,
+      };
+      setHistory((prev) => {
+        const next = [...prev, point];
+        return next.length > HISTORY_CAP ? next.slice(-HISTORY_CAP) : next;
+      });
     };
-    setHistory((prev) => {
-      const next = [...prev, point];
-      return next.length > HISTORY_CAP ? next.slice(-HISTORY_CAP) : next;
-    });
-  }, [raw, history.length]);
+    const id = setInterval(appendPoint, HISTORY_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, []);
 
   const after = useMemo<SensorReading>(
     () => (raw ? makeAfter(raw) : emptyReading()),
@@ -200,20 +217,9 @@ export function SensorDataProvider({ children }: { children: ReactNode }) {
     return { pm25, co2, voc, avg: Math.round((pm25 + co2 + voc) / 3) };
   }, [before, after]);
 
-  const onlineDevices = useMemo(
-    () => devices.filter((d) => d.status === "online").length,
-    [devices],
-  );
-
   const snapshot = (): string => {
     const beforeCat = aqiCategory(before.aqi);
     const afterCat = aqiCategory(after.aqi);
-    const deviceLines = devices
-      .map(
-        (d) =>
-          `  - ${d.name} (${d.location}): ${d.status === "online" ? "Online" : "Offline"}, AQI terakhir ${d.after.aqi}`,
-      )
-      .join("\n");
 
     return `DATA MONITORING SAAT INI (${lastUpdate.toLocaleTimeString("id-ID")}):
 • Koneksi RTDB: ${connected ? "Terhubung" : "Terputus"}
@@ -225,9 +231,7 @@ export function SensorDataProvider({ children }: { children: ReactNode }) {
   - VOC: ${effectiveness.voc}% (${before.voc} → ${after.voc} ppb)
 • Suhu: ${after.temperature}°C
 • Kelembaban: ${after.humidity}%
-• MQ-135 ADC: ${raw?.mq135_adc ?? "-"} (${raw?.mq135_volt ?? "-"} V)
-• Perangkat: ${onlineDevices}/${devices.length} online
-${deviceLines}`;
+• MQ-135 ADC: ${raw?.mq135_adc ?? "-"} (${raw?.mq135_volt ?? "-"} V)`;
   };
 
   const refresh = () => setLastUpdate(new Date());
@@ -237,8 +241,6 @@ ${deviceLines}`;
     after,
     effectiveness,
     lastUpdate,
-    devices,
-    onlineDevices,
     history,
     raw,
     connected,

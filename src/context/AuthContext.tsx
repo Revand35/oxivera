@@ -10,8 +10,12 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   updateProfile,
+  deleteUser,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  reauthenticateWithPopup,
 } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, deleteDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 
 interface AuthContextType {
@@ -21,6 +25,7 @@ interface AuthContextType {
   register: (email: string, password: string, displayName: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
+  deleteAccount: (currentPassword?: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -48,7 +53,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       displayName,
       createdAt: serverTimestamp(),
-      devices: [],
     });
   }
 
@@ -64,7 +68,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: result.user.email,
         displayName: result.user.displayName,
         createdAt: serverTimestamp(),
-        devices: [],
       },
       { merge: true }
     );
@@ -74,8 +77,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signOut(auth);
   }
 
+  async function deleteAccount(currentPassword?: string) {
+    const current = auth.currentUser;
+    if (!current) throw new Error("Tidak ada user yang sedang login.");
+
+    const providerIds = current.providerData.map((p) => p.providerId);
+    if (providerIds.includes("password")) {
+      if (!currentPassword)
+        throw new Error("Masukkan password untuk konfirmasi.");
+      const cred = EmailAuthProvider.credential(current.email!, currentPassword);
+      await reauthenticateWithCredential(current, cred);
+    } else if (providerIds.includes("google.com")) {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      await reauthenticateWithPopup(current, provider);
+    }
+
+    try {
+      await deleteDoc(doc(db, "users", current.uid, "settings", "preferences"));
+    } catch {}
+    try {
+      await deleteDoc(doc(db, "users", current.uid));
+    } catch {}
+
+    await deleteUser(current);
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, loginWithGoogle, logout }}>
+    <AuthContext.Provider
+      value={{ user, loading, login, register, loginWithGoogle, logout, deleteAccount }}
+    >
       {children}
     </AuthContext.Provider>
   );

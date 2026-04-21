@@ -47,6 +47,13 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
       className={`${plusJakarta.variable} ${fraunces.variable} h-full antialiased scroll-smooth`}
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=localStorage.getItem('oxivera:settings');if(s){var p=JSON.parse(s);if(p&&p.theme==='dark'){document.documentElement.classList.add('dark');}if(p&&p.language){document.documentElement.setAttribute('lang',p.language);}}}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         <AuthProvider>{children}</AuthProvider>
       </body>

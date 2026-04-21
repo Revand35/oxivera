@@ -6,7 +6,8 @@
       "Bash(ipconfig)",
       "Bash(ls:*)",
       "WebFetch(domain:phoenix-react-alt.prium.me)",
-      "WebFetch(domain:phoenix.prium.me)"
+      "WebFetch(domain:phoenix.prium.me)",
+      "Bash(npm install *)"
     ]
   }
 }
