@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import {
   HiOutlineMenu,
@@ -31,6 +32,20 @@ const PINK_DARK = "#ff6ba5";
 const GREEN = "#afd373";
 const GREEN_DARK = "#8fb852";
 const GRADIENT = `linear-gradient(90deg, ${PINK} 0%, ${GREEN} 100%)`;
+
+// Landing-page "Dashboard" CTAs always force a fresh login — even if the
+// user has an active session — by signing out first and routing to /login.
+function useEnterDashboard() {
+  const { logout } = useAuth();
+  const router = useRouter();
+  return async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    try {
+      await logout();
+    } catch {}
+    router.push("/login");
+  };
+}
 
 export default function HomePage() {
   // Clean up any leftover service worker on first load (one-time cleanup).
@@ -64,7 +79,7 @@ export default function HomePage() {
 /* ───────────── NAVBAR ───────────── */
 function Navbar() {
   const [open, setOpen] = useState(false);
-  const { user } = useAuth();
+  const enterDashboard = useEnterDashboard();
 
   const links = [
     { href: "#beranda", label: "Beranda" },
@@ -115,31 +130,20 @@ function Navbar() {
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
-          {user ? (
-            <Link
-              href="/dashboard"
-              className="text-sm font-medium px-4 py-2 rounded-full text-white shadow-md hover:shadow-lg transition inline-flex items-center gap-1.5"
-              style={{ background: GRADIENT }}
-            >
-              Ke Dashboard <HiOutlineArrowRight />
-            </Link>
-          ) : (
-            <>
-              <Link
-                href="/login"
-                className="text-sm font-medium text-gray-700 hover:text-gray-900"
-              >
-                Masuk
-              </Link>
-              <Link
-                href="/register"
-                className="text-sm font-medium px-4 py-2 rounded-full text-white shadow-md hover:shadow-lg transition"
-                style={{ background: GRADIENT }}
-              >
-                Daftar
-              </Link>
-            </>
-          )}
+          <a
+            href="/login"
+            onClick={enterDashboard}
+            className="text-sm font-medium text-gray-700 hover:text-gray-900 cursor-pointer"
+          >
+            Masuk
+          </a>
+          <Link
+            href="/register"
+            className="text-sm font-medium px-4 py-2 rounded-full text-white shadow-md hover:shadow-lg transition inline-flex items-center gap-1.5"
+            style={{ background: GRADIENT }}
+          >
+            Daftar
+          </Link>
         </div>
 
         <button
@@ -164,32 +168,21 @@ function Navbar() {
                 {l.label}
               </a>
             ))}
-            <div className="pt-3">
-              {user ? (
-                <Link
-                  href="/dashboard"
-                  className="block text-center py-2 text-sm font-medium text-white rounded-lg"
-                  style={{ background: GRADIENT }}
-                >
-                  Ke Dashboard
-                </Link>
-              ) : (
-                <div className="flex gap-2">
-                  <Link
-                    href="/login"
-                    className="flex-1 text-center py-2 text-sm font-medium border border-gray-300 rounded-lg"
-                  >
-                    Masuk
-                  </Link>
-                  <Link
-                    href="/register"
-                    className="flex-1 text-center py-2 text-sm font-medium text-white rounded-lg"
-                    style={{ background: GRADIENT }}
-                  >
-                    Daftar
-                  </Link>
-                </div>
-              )}
+            <div className="pt-3 flex gap-2">
+              <a
+                href="/login"
+                onClick={enterDashboard}
+                className="flex-1 text-center py-2 text-sm font-medium border border-gray-300 rounded-lg cursor-pointer"
+              >
+                Masuk
+              </a>
+              <Link
+                href="/register"
+                className="flex-1 text-center py-2 text-sm font-medium text-white rounded-lg"
+                style={{ background: GRADIENT }}
+              >
+                Daftar
+              </Link>
             </div>
           </div>
         </div>
@@ -200,9 +193,7 @@ function Navbar() {
 
 /* ───────────── HERO ───────────── */
 function Hero() {
-  const { user } = useAuth();
-  const primaryHref = user ? "/dashboard" : "/register";
-  const primaryLabel = user ? "Buka Dashboard" : "Mulai Sekarang";
+  const enterDashboard = useEnterDashboard();
 
   return (
     <section
@@ -254,13 +245,14 @@ function Hero() {
               <strong style={{ color: GREEN_DARK }}>sesudah</strong> difilter, secara real-time.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Link
-                href={primaryHref}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-white font-medium shadow-lg hover:shadow-xl transition hover:-translate-y-0.5"
+              <a
+                href="/login"
+                onClick={enterDashboard}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-white font-medium shadow-lg hover:shadow-xl transition hover:-translate-y-0.5 cursor-pointer"
                 style={{ background: GRADIENT }}
               >
-                {primaryLabel} <HiOutlineArrowRight />
-              </Link>
+                Masuk Dashboard <HiOutlineArrowRight />
+              </a>
               <a
                 href="#cara-kerja"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition"
@@ -752,9 +744,7 @@ function HowItWorks() {
 
 /* ───────────── CTA ───────────── */
 function CTASection() {
-  const { user } = useAuth();
-  const primaryHref = user ? "/dashboard" : "/register";
-  const primaryLabel = user ? "Buka Dashboard" : "Daftar Gratis";
+  const enterDashboard = useEnterDashboard();
 
   return (
     <section className="py-16 lg:py-20 bg-white">
@@ -777,26 +767,24 @@ function CTASection() {
               Siap membuktikan udara di sekitarmu lebih bersih?
             </h2>
             <p className="text-white/90 mb-8 max-w-xl mx-auto">
-              {user
-                ? "Lanjutkan monitoring kualitas udara di dashboardmu."
-                : "Daftar sekarang dan mulai monitoring kualitas udara rumah atau kantor kamu secara real-time."}
+              Masuk ke dashboard untuk memulai monitoring kualitas udara
+              rumah atau kantor kamu secara real-time.
             </p>
             <div className="flex flex-wrap gap-3 justify-center">
-              <Link
-                href={primaryHref}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white font-medium shadow-lg hover:shadow-xl transition"
+              <a
+                href="/login"
+                onClick={enterDashboard}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white font-medium shadow-lg hover:shadow-xl transition cursor-pointer"
                 style={{ color: PINK_DARK }}
               >
-                {primaryLabel} <HiOutlineArrowRight />
+                Masuk Dashboard <HiOutlineArrowRight />
+              </a>
+              <Link
+                href="/register"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full border-2 border-white text-white font-medium hover:bg-white/10 transition"
+              >
+                Daftar
               </Link>
-              {!user && (
-                <Link
-                  href="/login"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full border-2 border-white text-white font-medium hover:bg-white/10 transition"
-                >
-                  Masuk
-                </Link>
-              )}
             </div>
           </div>
         </div>
