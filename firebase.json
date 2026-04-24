@@ -6,14 +6,8 @@
       "**/.*",
       "**/node_modules/**"
     ],
-    "cleanUrls": true,
-    "trailingSlash": false,
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ],
+    "cleanUrls": false,
+    "trailingSlash": true,
     "headers": [
       {
         "source": "**/*.@(js|css)",

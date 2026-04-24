@@ -28,7 +28,6 @@ import {
   HiOutlineSparkles,
   HiOutlineCube,
   HiOutlineFire,
-  HiOutlineBeaker,
   HiOutlineRefresh,
   HiOutlineClock,
   HiOutlineExclamation,
@@ -81,22 +80,22 @@ export default function DashboardPage() {
   const [range, setRange] = useState<Range>("today");
   const [historyOpen, setHistoryOpen] = useState(false);
   const recorder = useRecorder({ raw, before, after });
+  const activeHistory = useMemo(() => (connected ? history : []), [connected, history]);
 
   const historicalData = useMemo(() => {
     const hours = range === "today" ? 24 : range === "week" ? 24 * 7 : 24 * 30;
-    const slice = history.slice(-hours);
+    const slice = activeHistory.slice(-hours);
     if (range === "today") return slice;
     if (range === "week") return slice.filter((_, i) => i % 6 === 0);
     return slice.filter((_, i) => i % 24 === 0);
-  }, [range, history]);
+  }, [range, activeHistory]);
 
   const effectivenessPm = effectiveness.pm25;
   const effectivenessCo2 = effectiveness.co2;
-  const effectivenessVoc = effectiveness.voc;
   const avgEffectiveness = effectiveness.avg;
 
   const envTrend = useMemo(() => {
-    const tail = history.slice(-8);
+    const tail = activeHistory.slice(-8);
     const pick = (fn: (p: (typeof history)[number]) => number, fallback: number) =>
       tail.length > 0 ? tail.map(fn) : [fallback];
     return {
@@ -105,7 +104,7 @@ export default function DashboardPage() {
       beforeHumidity: pick((p) => p.beforeHumidity, before.humidity),
       afterHumidity: pick((p) => p.afterHumidity, after.humidity),
     };
-  }, [history, before.temperature, after.temperature, before.humidity, after.humidity]);
+  }, [activeHistory, before.temperature, after.temperature, before.humidity, after.humidity]);
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-7xl mx-auto">
@@ -126,6 +125,11 @@ export default function DashboardPage() {
             <HiOutlineClock className="text-base" />
             Terakhir diperbarui {formatTime(lastUpdate)}
           </p>
+          <p className="text-xs mt-1.5" style={{ color: connected ? GREEN_DARK : "#9ca3af" }}>
+            {connected
+              ? "Status alat: Terhubung dan mengirim data realtime"
+              : "Status alat: Tidak terhubung / data realtime belum masuk"}
+          </p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -141,6 +145,13 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
+
+      {!connected && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl px-4 py-3 text-sm">
+          Alat belum terhubung. Data dan grafik akan berjalan otomatis setelah perangkat
+          mengirim data realtime.
+        </div>
+      )}
 
       {recorder.lastSession && !recorder.recording && (
         <RecordingSummary
@@ -206,7 +217,7 @@ export default function DashboardPage() {
             }
           />
           <div className="px-2 pb-4 h-72">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1}>
               <AreaChart data={historicalData}>
                 <defs>
                   <linearGradient id="beforeGradient" x1="0" y1="0" x2="0" y2="1">
@@ -271,13 +282,12 @@ export default function DashboardPage() {
           />
           <div className="px-6 pb-6">
             <div className="h-44 -mx-3">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1}>
                 <RadialBarChart
                   innerRadius="40%"
                   outerRadius="95%"
                   data={[
-                    { name: "VOC", value: effectivenessVoc, fill: PINK_DARK },
-                    { name: "CO2", value: effectivenessCo2, fill: GREEN_DARK },
+                    { name: "N2O", value: effectivenessCo2, fill: GREEN_DARK },
                     { name: "PM2.5", value: effectivenessPm, fill: PINK },
                   ]}
                   startAngle={90}
@@ -289,8 +299,7 @@ export default function DashboardPage() {
             </div>
             <div className="space-y-2 mt-2">
               <RadialLegend color={PINK} label="PM2.5" value={effectivenessPm} />
-              <RadialLegend color={GREEN_DARK} label="CO2" value={effectivenessCo2} />
-              <RadialLegend color={PINK_DARK} label="VOC" value={effectivenessVoc} />
+              <RadialLegend color={GREEN_DARK} label="N2O" value={effectivenessCo2} />
             </div>
           </div>
         </div>
@@ -337,19 +346,11 @@ export default function DashboardPage() {
           />
           <ReductionBar
             icon={<HiOutlineFire />}
-            label="CO2"
+            label="N2O"
             before={before.co2}
             after={after.co2}
             unit="ppm"
             percent={effectivenessCo2}
-          />
-          <ReductionBar
-            icon={<HiOutlineBeaker />}
-            label="VOC"
-            before={before.voc}
-            after={after.voc}
-            unit="ppb"
-            percent={effectivenessVoc}
           />
         </div>
       </div>
@@ -367,7 +368,7 @@ export default function DashboardPage() {
           }
         />
         <div className="px-2 pb-4 h-72">
-          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1}>
             <LineChart data={historicalData} margin={{ top: 8, right: 16, left: -12, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis
@@ -595,7 +596,7 @@ function KpiCard({
       <div className="flex items-end justify-between gap-2">
         <div className="text-2xl font-bold text-gray-900">{value}</div>
         <div className="w-16 h-8 -mb-1">
-          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1}>
             <AreaChart data={sparklineData}>
               <defs>
                 <linearGradient id={sparklineId} x1="0" y1="0" x2="0" y2="1">
@@ -692,10 +693,9 @@ function ComparisonCard({
           <span className="text-xs text-gray-400">AQI Index</span>
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <MiniMetric label="PM2.5" value={reading.pm25} unit="μg/m³" color={colorDark} />
-          <MiniMetric label="CO2" value={reading.co2} unit="ppm" color={colorDark} />
-          <MiniMetric label="VOC" value={reading.voc} unit="ppb" color={colorDark} />
+          <MiniMetric label="N2O" value={reading.co2} unit="ppm" color={colorDark} />
         </div>
       </div>
     </div>
@@ -826,7 +826,7 @@ function EnvCard({
       <div className="flex items-end justify-between">
         <div className="text-xl font-bold text-gray-900">{value}</div>
         <div className="w-14 h-8">
-          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1}>
             <BarChart data={data}>
               <Bar dataKey="v" fill={color} radius={[2, 2, 0, 0]} />
             </BarChart>
@@ -851,12 +851,10 @@ interface RecorderRow {
   mq135_adc: number;
   mq135_volt: number;
   after_pm25: number;
-  after_co2: number;
-  after_voc: number;
+  after_n2o: number;
   after_aqi: number;
   before_pm25_est: number;
-  before_co2_est: number;
-  before_voc_est: number;
+  before_n2o_est: number;
   before_aqi_est: number;
 }
 
@@ -972,12 +970,10 @@ function useRecorder({
         mq135_adc: r?.mq135_adc ?? 0,
         mq135_volt: r?.mq135_volt ?? 0,
         after_pm25: a.pm25,
-        after_co2: a.co2,
-        after_voc: a.voc,
+        after_n2o: a.co2,
         after_aqi: a.aqi,
         before_pm25_est: b.pm25,
-        before_co2_est: b.co2,
-        before_voc_est: b.voc,
+        before_n2o_est: b.co2,
         before_aqi_est: b.aqi,
       });
       setElapsed(elapsedSec);

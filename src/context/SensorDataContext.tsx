@@ -46,6 +46,7 @@ export interface RawSensor {
   mq135_adc: number;
   mq135_volt: number;
   suhu: number;
+  timestamp?: number;
 }
 
 interface SensorDataContextType {
@@ -211,44 +212,26 @@ function makeBefore(after: SensorReading, seed = 0): SensorReading {
   };
 }
 
-function withVisualFluctuation(base: SensorReading, seed: number): SensorReading {
-  const wave = Math.sin(seed / 6) * 0.08; // -8%..+8%
-  const nudge = (value: number, min = 0, precision = 1) => {
-    const next = Math.max(min, value * (1 + wave));
-    const p = Math.pow(10, precision);
-    return Math.round(next * p) / p;
-  };
-  const pm25 = nudge(base.pm25, 0, 1);
-  return {
-    ...base,
-    pm25,
-    pm10: nudge(pm25 * 1.4, 0, 1),
-    co2: Math.round(nudge(base.co2, 350, 0)),
-    voc: Math.round(nudge(base.voc, 0, 0)),
-    temperature: nudge(base.temperature, -50, 1),
-    humidity: Math.round(nudge(base.humidity, 0, 0)),
-    aqi: calcAqi(pm25),
-    timestamp: new Date(),
-  };
-}
-
 // Live-feel settings: push 1 point every 3 seconds so the chart visibly
 // moves while the user is watching. Cap = 1 hour of live data.
 const HISTORY_CAP = 1200;
-const HISTORY_INTERVAL_MS = 3000;
+const CONNECTION_TIMEOUT_MS = 15_000;
 
 export function SensorDataProvider({ children }: { children: ReactNode }) {
   const [raw, setRaw] = useState<RawSensor | null>(null);
   const [connected, setConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [remoteHistory, setRemoteHistory] = useState<HistoricalPoint[]>([]);
-  const [liveHistory, setLiveHistory] = useState<HistoricalPoint[]>([]);
-  const [visualTick, setVisualTick] = useState(0);
-  const tickRef = useRef(0);
+  const [lastPacketAt, setLastPacketAt] = useState<number>(0);
+  const lastPayloadSignatureRef = useRef<string>("");
+  const lastPacketAtRef = useRef(0);
   const rawRef = useRef<RawSensor | null>(null);
   useEffect(() => {
     rawRef.current = raw;
   }, [raw]);
+  useEffect(() => {
+    lastPacketAtRef.current = lastPacketAt;
+  }, [lastPacketAt]);
 
   useEffect(() => {
     const sensorRef = ref(rtdb, SENSOR_RTDB_PATH);
@@ -257,26 +240,36 @@ export function SensorDataProvider({ children }: { children: ReactNode }) {
       (snap) => {
         const val = snap.val() as Partial<RawSensor> | null;
         if (!val) {
+          setRaw(null);
           setConnected(false);
+          setLastPacketAt(0);
           return;
         }
-        setRaw({
+        const packetTsRaw = Number((val as { timestamp?: unknown; ts?: unknown }).timestamp ?? (val as { ts?: unknown }).ts);
+        const packetTs = Number.isFinite(packetTsRaw) && packetTsRaw > 0 ? packetTsRaw : Date.now();
+        const nextRaw: RawSensor = {
           kelembaban: Number(val.kelembaban) || 0,
           mq135_adc: Number(val.mq135_adc) || 0,
           mq135_volt: Number(val.mq135_volt) || 0,
           suhu: Number(val.suhu) || 0,
-        });
+          timestamp: packetTs,
+        };
+        const signature = `${nextRaw.suhu}|${nextRaw.kelembaban}|${nextRaw.mq135_adc}|${nextRaw.mq135_volt}|${packetTs}`;
+        const hasNewPacket =
+          signature !== lastPayloadSignatureRef.current || packetTs > lastPacketAtRef.current;
+        if (!hasNewPacket) return;
+        lastPayloadSignatureRef.current = signature;
+        setRaw(nextRaw);
+        setLastPacketAt(packetTs);
         setConnected(true);
-        setLastUpdate(new Date());
+        setLastUpdate(new Date(packetTs));
       },
-      () => setConnected(false),
+      () => {
+        setConnected(false);
+        setLastPacketAt(0);
+      },
     );
     return () => unsub();
-  }, []);
-
-  useEffect(() => {
-    const id = setInterval(() => setVisualTick((v) => v + 1), HISTORY_INTERVAL_MS);
-    return () => clearInterval(id);
   }, []);
 
   useEffect(() => {
@@ -316,53 +309,25 @@ export function SensorDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const appendPoint = () => {
-      const r = rawRef.current;
-      if (!r) return;
-      tickRef.current += 1;
-      const after = withVisualFluctuation(makeAfter(r), tickRef.current);
-      const before = withVisualFluctuation(makeBefore(after, tickRef.current), tickRef.current + 2);
-      const d = new Date();
-      const point: HistoricalPoint = {
-        time: d.toLocaleTimeString("id-ID", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        }),
-        hour: d.getHours(),
-        beforePm25: before.pm25,
-        afterPm25: after.pm25,
-        beforeAqi: before.aqi,
-        afterAqi: after.aqi,
-        beforeCo2: before.co2,
-        afterCo2: after.co2,
-        beforeVoc: before.voc,
-        afterVoc: after.voc,
-        beforeTemp: before.temperature,
-        afterTemp: after.temperature,
-        beforeHumidity: before.humidity,
-        afterHumidity: after.humidity,
-      };
-      setLiveHistory((prev) => {
-        const next = [...prev, point];
-        return next.length > 240 ? next.slice(-240) : next;
-      });
-    };
-    const id = setInterval(appendPoint, HISTORY_INTERVAL_MS);
+    const id = setInterval(() => {
+      const hasFreshPacket = lastPacketAt > 0 && Date.now() - lastPacketAt <= CONNECTION_TIMEOUT_MS;
+      setConnected(hasFreshPacket && !!rawRef.current);
+    }, 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [lastPacketAt]);
 
   const history = useMemo(() => {
-    if (remoteHistory.length === 0) return liveHistory;
-    const merged = [...remoteHistory, ...liveHistory];
-    return merged.slice(-HISTORY_CAP);
-  }, [remoteHistory, liveHistory]);
+    return remoteHistory.slice(-HISTORY_CAP);
+  }, [remoteHistory]);
 
   const after = useMemo<SensorReading>(
-    () => (raw ? withVisualFluctuation(makeAfter(raw), visualTick) : emptyReading()),
-    [raw, visualTick],
+    () => (connected && raw ? makeAfter(raw) : emptyReading()),
+    [raw, connected],
   );
-  const before = useMemo<SensorReading>(() => makeBefore(after, visualTick), [after, visualTick]);
+  const before = useMemo<SensorReading>(
+    () => (connected ? makeBefore(after) : emptyReading()),
+    [after, connected],
+  );
 
   const effectiveness = useMemo<Effectiveness>(() => {
     const pm25 = effectivenessPercent(before.pm25, after.pm25);

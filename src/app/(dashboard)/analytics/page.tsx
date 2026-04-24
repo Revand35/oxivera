@@ -36,12 +36,11 @@ const GREEN_DARK = "#8fb852";
 const GRAD = "linear-gradient(135deg, #ff94c0 0%, #afd373 100%)";
 
 type Range = "24h" | "7d" | "30d";
-type Metric = "pm25" | "aqi" | "co2";
+type Metric = "pm25" | "aqi";
 
 const metricLabel: Record<Metric, string> = {
   pm25: "PM2.5 (μg/m³)",
   aqi: "AQI Index",
-  co2: "CO₂ (ppm)",
 };
 
 interface AggPoint {
@@ -103,11 +102,12 @@ function aggregate(history: HistoricalPoint[], range: Range, metric: Metric): Ag
 /* ─────────── Page ─────────── */
 
 export default function AnalyticsPage() {
-  const { history, before, after, effectiveness } = useSensorData();
+  const { history, before, after, effectiveness, connected } = useSensorData();
   const [range, setRange] = useState<Range>("24h");
   const [metric, setMetric] = useState<Metric>("pm25");
+  const activeHistory = useMemo(() => (connected ? history : []), [connected, history]);
 
-  const data = useMemo(() => aggregate(history, range, metric), [history, range, metric]);
+  const data = useMemo(() => aggregate(activeHistory, range, metric), [activeHistory, range, metric]);
   const hasData = data.length > 0;
 
   const avgBefore = useMemo(() => average(data, (d) => d.before), [data]);
@@ -115,13 +115,27 @@ export default function AnalyticsPage() {
   const avgEff = avgBefore > 0 ? Math.round(((avgBefore - avgAfter) / avgBefore) * 100) : 0;
   const totalReduction = Math.round(data.reduce((s, d) => s + d.reduction, 0));
 
-  const aqiDistribution = useMemo(() => buildAqiDistribution(history), [history]);
-  const heatmap = useMemo(() => buildHeatmap(history), [history]);
+  const aqiDistribution = useMemo(() => buildAqiDistribution(activeHistory), [activeHistory]);
+  const heatmap = useMemo(() => buildHeatmap(activeHistory), [activeHistory]);
 
   const handleExport = () => {
     if (!history.length) return;
     const wb = XLSX.utils.book_new();
-    const sheet = XLSX.utils.json_to_sheet(history);
+    const exportRows = history.map((row) => ({
+      time: row.time,
+      hour: row.hour,
+      beforePm25: row.beforePm25,
+      afterPm25: row.afterPm25,
+      beforeAqi: row.beforeAqi,
+      afterAqi: row.afterAqi,
+      beforeN2o: row.beforeCo2,
+      afterN2o: row.afterCo2,
+      beforeTemp: row.beforeTemp,
+      afterTemp: row.afterTemp,
+      beforeHumidity: row.beforeHumidity,
+      afterHumidity: row.afterHumidity,
+    }));
+    const sheet = XLSX.utils.json_to_sheet(exportRows);
     XLSX.utils.book_append_sheet(wb, sheet, "History");
     XLSX.writeFile(wb, `oxivera-analytics-${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
@@ -161,12 +175,20 @@ export default function AnalyticsPage() {
           options={[
             { v: "pm25", l: "PM2.5" },
             { v: "aqi", l: "AQI" },
-            { v: "co2", l: "CO₂" },
           ]}
           onChange={(v) => setMetric(v as Metric)}
         />
         <div className="ml-auto flex items-center gap-1.5 text-xs text-gray-500">
           <HiOutlineClock /> {history.length} titik tersimpan
+        </div>
+        <div
+          className="px-3 py-1.5 rounded-full text-xs font-semibold"
+          style={{
+            background: connected ? "#d9ebb8" : "#f3f4f6",
+            color: connected ? GREEN_DARK : "#6b7280",
+          }}
+        >
+          {connected ? "Alat Terhubung" : "Alat Belum Terhubung"}
         </div>
       </div>
 
@@ -226,7 +248,7 @@ export default function AnalyticsPage() {
             </div>
           </div>
         </div>
-        <ResponsiveContainer width="100%" height={300} minWidth={0}>
+        <ResponsiveContainer width="100%" height={300} minWidth={0} minHeight={1}>
           <LineChart data={data} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
             <XAxis
@@ -272,7 +294,7 @@ export default function AnalyticsPage() {
           </div>
           <LegendPill />
         </div>
-        <ResponsiveContainer width="100%" height={340} minWidth={0}>
+        <ResponsiveContainer width="100%" height={340} minWidth={0} minHeight={1}>
           <ComposedChart data={data} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
             <defs>
               <linearGradient id="gradBefore" x1="0" y1="0" x2="0" y2="1">
@@ -382,7 +404,7 @@ export default function AnalyticsPage() {
             Total {totalReduction}
           </div>
         </div>
-        <ResponsiveContainer width="100%" height={220} minWidth={0}>
+        <ResponsiveContainer width="100%" height={220} minWidth={0} minHeight={1}>
           <ComposedChart data={data} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
             <defs>
               <linearGradient id="gradRed" x1="0" y1="0" x2="0" y2="1">
@@ -476,7 +498,7 @@ function HeroGauge({ effectiveness, liveEff }: { effectiveness: number; liveEff:
       <p className="text-xs text-gray-400 mb-3">Rata-rata rentang ini</p>
 
       <div className="relative w-full aspect-square max-w-[200px] mx-auto">
-        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1}>
           <RadialBarChart
             cx="50%"
             cy="50%"
@@ -778,7 +800,7 @@ function AqiDonut({ distribution }: { distribution: AqiBucket[] }) {
   }
   return (
     <div className="flex flex-col items-center">
-      <ResponsiveContainer width="100%" height={200} minWidth={0}>
+      <ResponsiveContainer width="100%" height={200} minWidth={0} minHeight={1}>
         <PieChart>
           <Pie
             data={distribution}

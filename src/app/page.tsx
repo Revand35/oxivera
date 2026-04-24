@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import ceoPhoto from "../../assets/ABI.jpg";
+import cmoPhoto from "../../assets/Naomi.jpeg";
+import cpoPhoto from "../../assets/Dhafa.jpg";
+import cboPhoto from "../../assets/vorin.jpg";
+import ctoPhoto from "../../assets/Evan.jpg";
+import croPhoto from "../../assets/Aurel.jpeg";
 import { useAuth } from "@/context/AuthContext";
 import {
   HiOutlineMenu,
@@ -14,10 +20,8 @@ import {
   HiOutlineShieldCheck,
   HiOutlineLocationMarker,
   HiOutlineSparkles,
-  HiOutlineBeaker,
   HiOutlineSun,
   HiOutlineCloud,
-  HiOutlineFire,
   HiOutlineTrendingUp,
   HiOutlineChip,
   HiOutlineWifi,
@@ -66,6 +70,7 @@ export default function HomePage() {
       <Hero />
       <FeatureCards />
       <AboutSection />
+      <TeamSection />
       <StatsSection />
       <SensorGrid />
       <HowItWorks />
@@ -73,6 +78,94 @@ export default function HomePage() {
       <CTASection />
       <Footer />
     </div>
+  );
+}
+
+/* ───────────── TEAM ───────────── */
+function TeamSection() {
+  const teamMembers = [
+    {
+      role: "CEO",
+      name: "Gabriel Abimanyu Putra Kurniawan D",
+      photo: ceoPhoto,
+    },
+    {
+      role: "CMO",
+      name: "Aisha Naomi Paramesti",
+      photo: cmoPhoto,
+    },
+    {
+      role: "CPO",
+      name: "Dhafa Riezqi Aribrata",
+      photo: cpoPhoto,
+    },
+    {
+      role: "CBO",
+      name: "Bilqis Desnayu Ivorin",
+      photo: cboPhoto,
+    },
+    {
+      role: "CTO",
+      name: "Evan Farrel Arkana Jainuri",
+      photo: ctoPhoto,
+    },
+    {
+      role: "CRO",
+      name: "I Gusti Ayu Aurellia Annisa Nawantari",
+      photo: croPhoto,
+    },
+  ];
+
+  return (
+    <section className="py-16 lg:py-24 bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center max-w-3xl mx-auto mb-12">
+          <div
+            className="text-xs font-semibold uppercase tracking-wider mb-3"
+            style={{ color: PINK_DARK }}
+          >
+            Company Profile
+          </div>
+          <h2 className="font-serif text-4xl sm:text-5xl font-semibold text-gray-900 mb-4 leading-[1.1]">
+            Tim Inti Oxivera
+          </h2>
+          <p className="text-gray-600 leading-relaxed">
+            Orang-orang di balik pengembangan produk, riset, dan pertumbuhan Oxivera.
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {teamMembers.map((member) => (
+            <div
+              key={member.role}
+              className="rounded-xl border border-gray-100 bg-white shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 overflow-hidden group"
+            >
+              <div className="relative w-full h-40 overflow-hidden bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center">
+                <Image
+                  src={member.photo}
+                  alt={`${member.name} - ${member.role}`}
+                  fill
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  className="object-contain group-hover:scale-105 transition-transform duration-300"
+                />
+              </div>
+              <div className="px-3 py-2.5">
+                <p
+                  className="inline-flex text-xs font-semibold px-2 py-1 rounded-full mb-2"
+                  style={{
+                    background: "linear-gradient(135deg, #ffd4e5 0%, #d9ebb8 100%)",
+                    color: GREEN_DARK,
+                  }}
+                >
+                  {member.role}
+                </p>
+                <h3 className="text-sm font-semibold text-gray-900 leading-snug">{member.name}</h3>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -263,7 +356,7 @@ function Hero() {
 
             <div className="mt-10 grid grid-cols-3 gap-6 max-w-md">
               <MiniStat number="87%" label="Efektivitas" />
-              <MiniStat number="6+" label="Sensor" />
+              <MiniStat number="4+" label="Sensor" />
               <MiniStat number="24/7" label="Monitoring" />
             </div>
           </div>
@@ -533,7 +626,7 @@ function AboutSection() {
             <div className="space-y-3">
               {[
                 "Transparansi penuh lewat data real-time yang bisa diaudit.",
-                "Menggunakan sensor grade-industri: PMS5003, MQ-135, BME680.",
+                "Menggunakan sensor gas: MQ-135.",
                 "Cloud-native: Firebase Firestore, Firebase Auth, ESP32 IoT.",
                 "Dashboard responsif yang bisa diakses di desktop maupun mobile.",
               ].map((txt, i) => (
@@ -597,18 +690,6 @@ function SensorGrid() {
       color: PINK,
     },
     {
-      icon: <HiOutlineBeaker />,
-      title: "CO2",
-      desc: "Mengukur kadar karbon dioksida — indikator kualitas ventilasi ruangan.",
-      color: GREEN,
-    },
-    {
-      icon: <HiOutlineFire />,
-      title: "VOC",
-      desc: "Senyawa organik volatil dari cat, parfum, atau bahan kimia rumah tangga.",
-      color: PINK,
-    },
-    {
       icon: <HiOutlineSun />,
       title: "Temperature",
       desc: "Pemantauan suhu ruangan — memengaruhi kenyamanan dan kualitas udara.",
@@ -640,7 +721,7 @@ function SensorGrid() {
             Parameter yang Diukur
           </div>
           <h2 className="font-serif text-4xl sm:text-5xl font-semibold text-gray-900 mb-4 leading-[1.1]">
-            Enam parameter, dua titik, satu alat.
+            Empat parameter, dua titik, satu alat.
           </h2>
           <p className="text-gray-600 leading-relaxed">
             Setiap parameter diukur dua kali — di input dan output filter — agar selisihnya
@@ -648,24 +729,24 @@ function SensorGrid() {
           </p>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {sensors.map((s, i) => (
             <div
               key={i}
-              className="relative rounded-2xl p-6 border border-gray-100 bg-white hover:shadow-lg transition group overflow-hidden"
+              className="rounded-2xl p-5 border border-gray-100 bg-white shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 group overflow-hidden"
             >
               <div
-                className="absolute -top-10 -right-10 w-32 h-32 rounded-full opacity-10 group-hover:opacity-20 transition"
+                className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-10 group-hover:opacity-15 transition"
                 style={{ background: s.color }}
               />
               <div
-                className="relative w-12 h-12 rounded-xl flex items-center justify-center text-2xl text-white mb-4 shadow-md"
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-xl text-white mb-3 shadow-md"
                 style={{ background: s.color }}
               >
                 {s.icon}
               </div>
-              <h3 className="relative font-semibold text-gray-900 mb-1">{s.title}</h3>
-              <p className="relative text-sm text-gray-500 leading-relaxed">{s.desc}</p>
+              <h3 className="font-semibold text-gray-900 mb-1.5 text-sm">{s.title}</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">{s.desc}</p>
             </div>
           ))}
         </div>
