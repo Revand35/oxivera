@@ -125,11 +125,6 @@ export default function DashboardPage() {
             <HiOutlineClock className="text-base" />
             Terakhir diperbarui {formatTime(lastUpdate)}
           </p>
-          <p className="text-xs mt-1.5" style={{ color: connected ? GREEN_DARK : "#9ca3af" }}>
-            {connected
-              ? "Status alat: Terhubung dan mengirim data realtime"
-              : "Status alat: Tidak terhubung / data realtime belum masuk"}
-          </p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -145,13 +140,6 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
-
-      {!connected && (
-        <div className="mb-6 bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl px-4 py-3 text-sm">
-          Alat belum terhubung. Data dan grafik akan berjalan otomatis setelah perangkat
-          mengirim data realtime.
-        </div>
-      )}
 
       {recorder.lastSession && !recorder.recording && (
         <RecordingSummary

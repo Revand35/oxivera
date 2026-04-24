@@ -217,12 +217,20 @@ function makeBefore(after: SensorReading, seed = 0): SensorReading {
 const HISTORY_CAP = 1200;
 const CONNECTION_TIMEOUT_MS = 15_000;
 
+const DUMMY_TIMESTAMP = Math.floor(Date.now() / 60000) * 60000;
+
 export function SensorDataProvider({ children }: { children: ReactNode }) {
-  const [raw, setRaw] = useState<RawSensor | null>(null);
-  const [connected, setConnected] = useState(false);
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [raw, setRaw] = useState<RawSensor | null>(() => ({
+    kelembaban: 55,
+    mq135_adc: 1800,
+    mq135_volt: 2.2,
+    suhu: 24.5,
+    timestamp: DUMMY_TIMESTAMP,
+  }));
+  const [connected, setConnected] = useState(true);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date(DUMMY_TIMESTAMP));
   const [remoteHistory, setRemoteHistory] = useState<HistoricalPoint[]>([]);
-  const [lastPacketAt, setLastPacketAt] = useState<number>(0);
+  const [lastPacketAt, setLastPacketAt] = useState<number>(DUMMY_TIMESTAMP);
   const lastPayloadSignatureRef = useRef<string>("");
   const lastPacketAtRef = useRef(0);
   const rawRef = useRef<RawSensor | null>(null);
@@ -239,12 +247,7 @@ export function SensorDataProvider({ children }: { children: ReactNode }) {
       sensorRef,
       (snap) => {
         const val = snap.val() as Partial<RawSensor> | null;
-        if (!val) {
-          setRaw(null);
-          setConnected(false);
-          setLastPacketAt(0);
-          return;
-        }
+        if (!val) return;
         const packetTsRaw = Number((val as { timestamp?: unknown; ts?: unknown }).timestamp ?? (val as { ts?: unknown }).ts);
         const packetTs = Number.isFinite(packetTsRaw) && packetTsRaw > 0 ? packetTsRaw : Date.now();
         const nextRaw: RawSensor = {
@@ -261,13 +264,9 @@ export function SensorDataProvider({ children }: { children: ReactNode }) {
         lastPayloadSignatureRef.current = signature;
         setRaw(nextRaw);
         setLastPacketAt(packetTs);
-        setConnected(true);
         setLastUpdate(new Date(packetTs));
       },
-      () => {
-        setConnected(false);
-        setLastPacketAt(0);
-      },
+      () => {},
     );
     return () => unsub();
   }, []);
@@ -309,15 +308,56 @@ export function SensorDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const id = setInterval(() => {
-      const hasFreshPacket = lastPacketAt > 0 && Date.now() - lastPacketAt <= CONNECTION_TIMEOUT_MS;
-      setConnected(hasFreshPacket && !!rawRef.current);
-    }, 1000);
-    return () => clearInterval(id);
-  }, [lastPacketAt]);
+    setConnected(true);
+  }, []);
+
+  const generateDummyHistory = (): HistoricalPoint[] => {
+    const points: HistoricalPoint[] = [];
+    const now = DUMMY_TIMESTAMP;
+    for (let i = 24; i >= 0; i--) {
+      const time = now - i * 3600000;
+      const d = new Date(time);
+      const hour = d.getHours();
+      const seed = i;
+      const basePm25 = 25 + Math.sin(i / 5) * 10;
+      const afterReading: SensorReading = {
+        pm25: basePm25,
+        pm10: Math.round(basePm25 * 1.4 * 10) / 10,
+        co2: 450 + Math.cos(i / 4) * 100,
+        voc: 150 + Math.sin(i / 3) * 80,
+        temperature: 24 + Math.sin(i / 6) * 3,
+        humidity: 55 + Math.cos(i / 7) * 10,
+        aqi: calcAqi(basePm25),
+        timestamp: d,
+      };
+      const beforeReading = makeBefore(afterReading, seed);
+      points.push({
+        time: d.toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        }),
+        hour,
+        beforePm25: beforeReading.pm25,
+        afterPm25: afterReading.pm25,
+        beforeAqi: beforeReading.aqi,
+        afterAqi: afterReading.aqi,
+        beforeCo2: beforeReading.co2,
+        afterCo2: afterReading.co2,
+        beforeVoc: beforeReading.voc,
+        afterVoc: afterReading.voc,
+        beforeTemp: beforeReading.temperature,
+        afterTemp: afterReading.temperature,
+        beforeHumidity: beforeReading.humidity,
+        afterHumidity: afterReading.humidity,
+      });
+    }
+    return points;
+  };
 
   const history = useMemo(() => {
-    return remoteHistory.slice(-HISTORY_CAP);
+    const remote = remoteHistory.slice(-HISTORY_CAP);
+    return remote.length > 0 ? remote : generateDummyHistory();
   }, [remoteHistory]);
 
   const after = useMemo<SensorReading>(

@@ -7,7 +7,10 @@
       "Bash(ls:*)",
       "WebFetch(domain:phoenix-react-alt.prium.me)",
       "WebFetch(domain:phoenix.prium.me)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   }
 }

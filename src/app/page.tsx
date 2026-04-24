@@ -134,33 +134,28 @@ function TeamSection() {
           </p>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {teamMembers.map((member) => (
-            <div
-              key={member.role}
-              className="rounded-xl border border-gray-100 bg-white shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 overflow-hidden group"
-            >
-              <div className="relative w-full h-40 overflow-hidden bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center">
+            <div key={member.role} className="text-center group">
+              <div className="relative w-32 h-40 mx-auto mb-4 overflow-hidden rounded-xl">
                 <Image
                   src={member.photo}
                   alt={`${member.name} - ${member.role}`}
                   fill
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                  className="object-contain group-hover:scale-105 transition-transform duration-300"
+                  className="object-cover group-hover:scale-105 transition-transform duration-300"
                 />
               </div>
-              <div className="px-3 py-2.5">
-                <p
-                  className="inline-flex text-xs font-semibold px-2 py-1 rounded-full mb-2"
-                  style={{
-                    background: "linear-gradient(135deg, #ffd4e5 0%, #d9ebb8 100%)",
-                    color: GREEN_DARK,
-                  }}
-                >
-                  {member.role}
-                </p>
-                <h3 className="text-sm font-semibold text-gray-900 leading-snug">{member.name}</h3>
-              </div>
+              <p
+                className="inline-flex text-xs font-semibold px-3 py-1 rounded-full mb-2"
+                style={{
+                  background: "linear-gradient(135deg, #ffd4e5 0%, #d9ebb8 100%)",
+                  color: GREEN_DARK,
+                }}
+              >
+                {member.role}
+              </p>
+              <h3 className="text-sm font-semibold text-gray-900">{member.name}</h3>
             </div>
           ))}
         </div>

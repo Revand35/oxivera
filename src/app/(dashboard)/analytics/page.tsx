@@ -497,7 +497,7 @@ function HeroGauge({ effectiveness, liveEff }: { effectiveness: number; liveEff:
       </p>
       <p className="text-xs text-gray-400 mb-3">Rata-rata rentang ini</p>
 
-      <div className="relative w-full aspect-square max-w-[200px] mx-auto">
+      <div className="relative mx-auto" style={{ width: 200, height: 200 }}>
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1}>
           <RadialBarChart
             cx="50%"
