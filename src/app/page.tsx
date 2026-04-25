@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import ceoPhoto from "../../assets/ABI.jpg";
 import cmoPhoto from "../../assets/Naomi.jpeg";
 import cpoPhoto from "../../assets/Dhafa.jpg";
-import cboPhoto from "../../assets/vorin.jpg";
+import cboPhoto from "../../assets/bilqis.jpeg";
 import ctoPhoto from "../../assets/Evan.jpg";
 import croPhoto from "../../assets/Aurel.jpeg";
 import { useAuth } from "@/context/AuthContext";
