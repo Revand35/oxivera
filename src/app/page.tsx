@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import ceoPhoto from "../../assets/ABI.png";
 import cmoPhoto from "../../assets/Naomi.png";
 import cpoPhoto from "../../assets/Dhafa.jpg";
-import cboPhoto from "../../assets/bilqis.jpeg";
+import cboPhoto from "../../assets/bilqis.png";
 import ctoPhoto from "../../assets/Evan.jpg";
 import croPhoto from "../../assets/Aurel.jpeg";
 import { useAuth } from "@/context/AuthContext";
@@ -101,7 +101,7 @@ function TeamSection() {
     },
     {
       role: "CBO",
-      name: "Bilqis Desnayu Ivorin",
+      name: "Bilqis Desnayu Ivorine",
       photo: cboPhoto,
     },
     {
