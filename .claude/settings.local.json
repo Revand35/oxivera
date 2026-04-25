@@ -10,7 +10,11 @@
       "Bash(npm install *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(npm run *)",
+      "Bash(python -m pip install rembg -q)",
+      "Bash(python3)",
+      "Bash(file /c/Users/USER/Downloads/oxivera/assets/*.png)"
     ]
   }
 }
